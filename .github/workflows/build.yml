@@ -22,15 +22,12 @@ jobs:
     
     - name: Create minimal config
       run: |
-        cat > buildozer.spec << 'EOF'
+        cat > buildozer.spec << "EOF"
 [app]
 title = My App
 package.name = myapp
 package.domain = com.example
 requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow
-
-[buildozer]
-log_level = 2
 
 [android]
 api = 30
@@ -49,5 +46,3 @@ EOF
       with:
         name: app-debug
         path: bin/*.apk
-        if-no-files-found: warn
-        retention-days: 30
