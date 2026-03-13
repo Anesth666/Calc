@@ -1,0 +1,59 @@
+name: Build KivyMD for Android
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev libtinfo5 cmake libffi-dev libssl-dev
+        pip install --upgrade pip
+        pip install cython buildozer
+
+    - name: Cache Buildozer
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildozer
+        key: ${{ runner.os }}-buildozer-${{ hashFiles('buildozer.spec') }}
+
+    - name: Build with Buildozer
+      run: |
+        # Если нет buildozer.spec, создаем его
+        if [ ! -f buildozer.spec ]; then
+          buildozer init
+          # Настройка под KivyMD
+          sed -i 's/^requirements = python3.*/requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow,requests/' buildozer.spec
+          sed -i 's/^package.name =.*/package.name = mykivymdapp/' buildozer.spec
+          sed -i 's/^package.domain =.*/package.domain = org.example/' buildozer.spec
+          sed -i 's/^android.permissions =.*/android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE/' buildozer.spec
+        fi
+        
+        # Сборка
+        buildozer -v android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: bin/*.apk
+        retention-days: 30
