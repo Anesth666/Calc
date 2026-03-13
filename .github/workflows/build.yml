@@ -15,31 +15,25 @@ jobs:
     
     - name: Auto accept licenses
       run: |
-        # Принимаем все лицензии
         yes | $ANDROID_HOME/tools/bin/sdkmanager --licenses || true
         mkdir -p ~/.buildozer
         echo "yes" > ~/.buildozer/accept_sdk_license
     
-    - name: Create minimal config
+    - name: Create buildozer.spec
       run: |
-        cat > buildozer.spec << "EOF"
-[app]
-title = My App
-package.name = myapp
-package.domain = com.example
-requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow
-
-[android]
-api = 30
-minapi = 21
-ndk = 23b
-android.accept_sdk_license = True
-EOF
+        printf '[app]\n' > buildozer.spec
+        printf 'title = My App\n' >> buildozer.spec
+        printf 'package.name = myapp\n' >> buildozer.spec
+        printf 'package.domain = com.example\n' >> buildozer.spec
+        printf 'requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow\n' >> buildozer.spec
+        printf '\n[android]\n' >> buildozer.spec
+        printf 'api = 30\n' >> buildozer.spec
+        printf 'minapi = 21\n' >> buildozer.spec
+        printf 'ndk = 23b\n' >> buildozer.spec
+        printf 'android.accept_sdk_license = True\n' >> buildozer.spec
     
     - name: Build
-      run: |
-        # Автоматически подтверждаем все запросы
-        yes | buildozer android debug
+      run: yes | buildozer android debug
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
