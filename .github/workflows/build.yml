@@ -1,9 +1,8 @@
-name: Docker Build
+name: Docker Build with Auto Confirm
 
 on:
   push:
-    branches: [ main, master ]
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
   build:
@@ -15,42 +14,62 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     
-    - name: Prepare buildozer.spec
+    - name: Accept Android Licenses
       run: |
-        # Создаем buildozer.spec если его нет
+        # Автоматическое принятие всех лицензий
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        
+        # Создаем конфиг для автоматического подтверждения
+        mkdir -p ~/.buildozer/.buildozer
+        echo "yes" > ~/.buildozer/.buildozer/accept_sdk_license
+        echo "yes" > ~/.buildozer/.buildozer/accept_ndk_license
+    
+    - name: Configure buildozer.spec
+      run: |
+        # Создаем конфиг если его нет
         if [ ! -f buildozer.spec ]; then
           buildozer init
         fi
         
-        # Настройка для KivyMD с автоматическим подтверждением
-        sed -i 's/^requirements =.*/requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow,requests,docutils,pygments/' buildozer.spec
-        sed -i 's/^package.name =.*/package.name = mykivymdapp/' buildozer.spec
-        sed -i 's/^package.domain =.*/package.domain = com.example/' buildozer.spec
-        sed -i 's/^android.api =.*/android.api = 30/' buildozer.spec
-        sed -i 's/^android.minapi =.*/android.minapi = 21/' buildozer.spec
-        sed -i 's/^android.ndk =.*/android.ndk = 23b/' buildozer.spec
-        sed -i 's/^android.sdk =.*/android.sdk = 30/' buildozer.spec
-        sed -i 's/^#android.permissions =.*/android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE/' buildozer.spec
-        
-        # Отключаем все интерактивные запросы
-        echo "android.accept_sdk_license = True" >> buildozer.spec
-        echo "android.ndk_path = /home/user/.buildozer/android/platform/android-ndk-r23b" >> buildozer.spec
-        
-        # Автоматическое принятие лицензий
-        echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        # Настройка для KivyMD
+        cat > buildozer.spec << EOF
+[app]
+title = My KivyMD App
+package.name = mykivymdapp
+package.domain = com.example
+source.dir = .
+source.include_exts = py,png,jpg,kv,atlas,txt,json
+version = 0.1
+requirements = python3,kivy==2.1.0,kivymd==1.1.1,pyjnius,android,openssl,pillow,requests
+orientation = portrait
+osx.python_version = 3
+osx.kivy_version = 2.1.0
+fullscreen = 0
+
+[buildozer]
+log_level = 2
+warn_on_root = 1
+
+[android]
+api = 30
+minapi = 21
+ndk = 23b
+sdk = 30
+android.accept_sdk_license = True
+android.permissions = INTERNET,WRITE_EXTERNAL_STORAGE,READ_EXTERNAL_STORAGE
+android.archs = arm64-v8a, armeabi-v7a
+android.gradle_dependencies = androidx.recyclerview:recyclerview:1.2.1,com.google.android.material:material:1.6.1
+p4a.hooks = kivymd.hooks
+EOF
     
-    - name: Build APK (non-interactive)
+    - name: Build APK
       run: |
-        # Создаем файл с ответами для автоматического подтверждения
-        mkdir -p /home/user/.buildozer/.buildozer
-        echo "yes" > /home/user/.buildozer/.buildozer/accept_sdk_license
-        
-        # Запускаем сборку с автоматическим подтверждением
-        yes | buildozer android debug || buildozer android debug
+        # Используем 'yes' для автоматического подтверждения всех запросов
+        yes | buildozer android debug
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: bin/*.apk
-        if-no-files-found: warn
+        name: mykivymdapp-debug
+        path: bin/*.debug.apk
+        retention-days: 30
